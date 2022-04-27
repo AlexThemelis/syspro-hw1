@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#define MAXBUFF 4096
+#define MAXBUFF 64
 #define FIFO1 "/tmp/fifo.1"
 #define FIFO2 "/tmp/fifo.2"
 #define PERMS 0666

@@ -10,7 +10,7 @@
 #define READ 0
 #define WRITE 1
 
-#define MAXBUFF 4096
+#define MAXBUFF 64
 #define FIFO1 "/tmp/fifo.1"
 #define FIFO2 "/tmp/fifo.2"
 #define PERMS 0666
@@ -69,14 +69,17 @@ int main()
         close(p[READ]);
         dup2(p[WRITE], 1);
         int retval = 0;
+        //Explain in readme what are the parameters doing, why we did only create and moved_to
+        //From the man page, only these 2 events (create and moved_to) is what we care at our exercise
         retval = execl("/usr/bin/X11/inotifywait", "inotifywait", ".", "-m", "-e", "create", "-e", "moved_to", NULL);
+        //TODO check if /usr/bin/inotifywait does the job (tell in the readme that we can find the path with "which inotifywait")
     }
     else{ // Manager //
         close(p[WRITE]);
         int rsize;
-        char inbuf[64];
+        char inbuf[MAXBUFF];
         while(true){
-            rsize = read(p[READ], inbuf, 64);
+            rsize = read(p[READ], inbuf, MAXBUFF);
             //filename = 
             printf("%.*s\n", rsize, inbuf);
         }
