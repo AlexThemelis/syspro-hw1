@@ -24,15 +24,12 @@ int main()
     pid_t pid;
     char *filename;
 
-    string mystr = "./ CREATE CriptoMasterProb4-2021-2022.pdf"; //https://stackoverflow.com/questions/54351071/match-the-nth-word-in-a-line
-    regex regexInotify("^(?:\\w+ ){2}\\K \\w +"); //Fix this to a good regex
+    regex regexInotifyCreate("CREATE (.+)"); //Explain
+    regex regexInotifyMove_to("MOVED_TO (.+)"); //Explain
     smatch m;
-    regex_search(mystr,m,regexInotify);
 
-    for (auto x : m) 
-        cout << x << " "; 
-    return 0; 
-
+    string filenametest;
+    string inbuffer;
 
     if (pipe(p) == -1)
     {
@@ -78,10 +75,21 @@ int main()
         close(p[WRITE]);
         int rsize;
         char inbuf[MAXBUFF];
+        char *buffer;
         while(true){
             rsize = read(p[READ], inbuf, MAXBUFF);
-            //filename = 
-            printf("%.*s\n", rsize, inbuf);
+            inbuffer = inbuf;
+            regex_search(inbuffer,m,regexInotifyCreate); //If inotifywait gave CREATE ...
+            for (auto x : m)
+                filenametest = x;
+            if(filenametest.empty()){ // If inotifywait gave MOVED_TO and therefore filenametest is empty
+                regex_search(inbuffer,m,regexInotifyMove_to); 
+                for (auto x : m)
+                    filenametest = x;                
+            } 
+
+            buffer = &filenametest[0]; //We make string into char * in order to be able to easier handle it
+            printf("%.*s\n", rsize, buffer);
         }
     }
 }
