@@ -74,12 +74,15 @@ char ** url_extracter(char *buffer){
         url_counter++;
     }
 
-    for(int i=0;i++;i<MAXBUFF){
-        if(buffer[i] == EOF)
-            return urls;
+    for(int i=0;i<url_counter;i++){
+        urls[i] = &url_string[0][i]; //We make string into char * in order to be able to easier handle
+    } 
+    // for(int i=0;i<MAXBUFF;i++){
+    //     if(buffer[i] == EOF)
+    //         return urls;
         
 
-    }
+    // }
 
     return urls;
 }

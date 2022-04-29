@@ -17,12 +17,45 @@
 
 using namespace std;
 
+string * url_extracter(char *buffer){
+    //char ** urls;
+    int url_counter=0;
+    string *url_string = (string *)malloc(10 *sizeof(string));
+    string buffer_str = buffer; //To work with regex_search
+
+    regex regexHttp("http://\\S*"); //Explain
+    smatch m;
+
+    // regex_search(buffer_str,m,regexHttp);
+    // for (auto x : m){
+    //     printf("test1\n");
+    //     cout << x << endl;
+    //     //url_string[0] = x;
+    //     url_counter++;
+    // }
+
+    //This works, if you have time try like the above, else understand it with the suffix and explain it
+    while (regex_search(buffer_str, m, regexHttp)) {
+        url_string[url_counter] = m[0];
+        buffer_str = m.suffix();
+        url_counter++;
+    }
+
+    // for(int i=0;i<MAXBUFF;i++){
+    //     if(buffer[i] == EOF)
+    //         return urls;
+        
+
+    // }
+
+    return url_string;
+}
+
 int main()
 {
     int p[2];
     int readfd,writefd;
     pid_t pid;
-    char *filename;
 
     regex regexInotifyCreate("CREATE (.+)"); //Explain
     regex regexInotifyMove_to("MOVED_TO (.+)"); //Explain
@@ -75,7 +108,9 @@ int main()
         close(p[WRITE]);
         int rsize;
         char inbuf[MAXBUFF];
-        char *buffer;
+        char *filename;
+        //char **urls;
+        string *urls;
         while(true){
             rsize = read(p[READ], inbuf, MAXBUFF);
             inbuffer = inbuf;
@@ -88,8 +123,28 @@ int main()
                     filenametest = x;                
             } 
 
-            buffer = &filenametest[0]; //We make string into char * in order to be able to easier handle it
-            printf("%.*s\n", rsize, buffer);
+            filename = &filenametest[0]; //We make string into char * in order to be able to easier handle it
+
+            int filedes;
+            if ((filedes = open(filename, O_RDONLY))== -1){
+                perror(" error in opening anotherfile \n");
+                exit (1) ;
+            }
+
+            char buffer[64];
+            ssize_t nread;
+            long total = 0;
+            while((nread = read(filedes,buffer,MAXBUFF)) > 0){
+                total+=nread;
+                printf("total char %ld \n",total);
+            }
+                        
+
+            urls = url_extracter(buffer);
+            cout << urls[0] << endl;
+            cout << urls[1] << "edw" << endl;
+
+            free(urls);
         }
     }
 }
