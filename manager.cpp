@@ -11,16 +11,14 @@
 #define WRITE 1
 
 #define MAXBUFF 64
-#define FIFO1 "/tmp/fifo.1"
+#define FIFO1 "/tmp/fifo.1" // We will do get_pid() as a name , the name of the worker
 #define FIFO2 "/tmp/fifo.2"
 #define PERMS 0666
 
 using namespace std;
 
-string * url_extracter(char *buffer){
-    //char ** urls;
+int url_extracter(char *buffer,string *url_string){
     int url_counter=0;
-    string *url_string = (string *)malloc(10 *sizeof(string));
     string buffer_str = buffer; //To work with regex_search
 
     regex regexHttp("http://\\S*"); //Explain
@@ -35,20 +33,15 @@ string * url_extracter(char *buffer){
     // }
 
     //This works, if you have time try like the above, else understand it with the suffix and explain it
+    
     while (regex_search(buffer_str, m, regexHttp)) {
-        url_string[url_counter] = m[0];
+        url_string[url_counter] = m[0]; //check about strcpy etc
         buffer_str = m.suffix();
         url_counter++;
     }
 
-    // for(int i=0;i<MAXBUFF;i++){
-    //     if(buffer[i] == EOF)
-    //         return urls;
-        
+    return url_counter; //Return how many urls
 
-    // }
-
-    return url_string;
 }
 
 int main()
@@ -87,6 +80,12 @@ int main()
     //     perror("server: can't open write fifo");
     // }
 
+        // The file that the urls will be
+        int fd;
+        if ((fd = open("/tmp/urls.out", O_CREAT|O_TRUNC|O_WRONLY|O_APPEND))== -1){ //Make it delete existing file, look diale3eis for that
+            perror(" error in creating\n");
+            exit(1);
+        }
 
 
     if ((pid = fork()) < 0)
@@ -102,15 +101,13 @@ int main()
         //Explain in readme what are the parameters doing, why we did only create and moved_to
         //From the man page, only these 2 events (create and moved_to) is what we care at our exercise
         retval = execl("/usr/bin/X11/inotifywait", "inotifywait", ".", "-m", "-e", "create", "-e", "moved_to", NULL);
-        //TODO check if /usr/bin/inotifywait does the job (tell in the readme that we can find the path with "which inotifywait")
     }
     else{ // Manager //
         close(p[WRITE]);
         int rsize;
         char inbuf[MAXBUFF];
         char *filename;
-        //char **urls;
-        string *urls;
+        string urls[9]; //You cant have more than 9 urls in a 64 buffer
         while(true){
             rsize = read(p[READ], inbuf, MAXBUFF);
             inbuffer = inbuf;
@@ -128,23 +125,31 @@ int main()
             int filedes;
             if ((filedes = open(filename, O_RDONLY))== -1){
                 perror(" error in opening anotherfile \n");
-                exit (1) ;
+                exit(1);
             }
+
 
             char buffer[64];
             ssize_t nread;
-            long total = 0;
+            int url_counter;
+            int i;
+
+            int testbytes;
+            string tests;
+            char arr[64]; //Highest url, like buffer
+
             while((nread = read(filedes,buffer,MAXBUFF)) > 0){
-                total+=nread;
-                printf("total char %ld \n",total);
+                url_counter = url_extracter(buffer,urls);
+                //write here in the file the urls
+                for(i=0;i<url_counter;i++){
+                    urls[i] = urls[i].substr(7,urls[i].length()); // Removing http://
+                    urls[i].append("\n"); // Each url is on a new line
+                    strcpy(arr, urls[i].c_str()); // Make the string -> char in order to work with write()
+                    testbytes = write(fd,arr,strlen(arr)); // the length part
+                }
             }
                         
 
-            urls = url_extracter(buffer);
-            cout << urls[0] << endl;
-            cout << urls[1] << "edw" << endl;
-
-            free(urls);
         }
     }
 }
