@@ -10,7 +10,7 @@
 #define READ 0
 #define WRITE 1
 
-#define MAXBUFF 64
+#define MAXBUFF 4096
 #define FIFO1 "/tmp/fifo.1" // We will do get_pid() as a name , the name of the worker
 #define FIFO2 "/tmp/fifo.2"
 #define PERMS 0666
@@ -36,6 +36,7 @@ int url_extracter(char *buffer,string *url_string){
     
     while (regex_search(buffer_str, m, regexHttp)) {
         url_string[url_counter] = m[0]; //check about strcpy etc
+        //cout << "Caught a " << url_string[url_counter] << endl;
         buffer_str = m.suffix();
         url_counter++;
     }
@@ -107,7 +108,7 @@ int main()
         int rsize;
         char inbuf[MAXBUFF];
         char *filename;
-        string urls[9]; //You cant have more than 9 urls in a 64 buffer
+        string urls[MAXBUFF/7 + 1]; //http:// has 7 letters so you cant have more than MAXBUFF/7 urls in a MAXBUFF buffer
         while(true){
             rsize = read(p[READ], inbuf, MAXBUFF);
             inbuffer = inbuf;
@@ -129,20 +130,39 @@ int main()
             }
 
 
-            char buffer[64];
+            char buffer[MAXBUFF];
             ssize_t nread;
             int url_counter;
             int i;
+            int j;
 
             int testbytes;
             string tests;
-            char arr[64]; //Highest url, like buffer
-
+            char arr[MAXBUFF]; //Highest url, like buffer
+            int strLength;
             while((nread = read(filedes,buffer,MAXBUFF)) > 0){
                 url_counter = url_extracter(buffer,urls);
                 //write here in the file the urls
                 for(i=0;i<url_counter;i++){
-                    urls[i] = urls[i].substr(7,urls[i].length()); // Removing http://
+                    //cout << "Before removing http:// " << urls[i] << endl;
+                    urls[i] = urls[i].substr(7,urls[i].length()); // Removing http:// 
+                    //cout << "after removing http:// " << urls[i] << endl;
+                    //cout << "Before removing www. " << urls[i] << endl;
+                    if(urls[i].length()>3){ //Has at least 4 characters
+                        if(urls[i][0] == 'w' && urls[i][1] == 'w' && urls[i][2] == 'w' && urls[i][3] == '.'){ //Has a www. infront
+                            urls[i] = urls[i].substr(4,urls[i].length()); //Removing "www."
+                        }
+                    }
+                    //cout << "After removing http:// " << urls[i] << endl;
+                    //cout << "Before removing garbish after / " << urls[i] << endl;
+                    strLength = urls[i].length();
+                    for(j=0;i<strLength;j++){
+                        if(urls[i][j] == '/'){ //We find if and where is a '/' in the url
+                            urls[i] = urls[i].substr(0,j); //We keep the string from the start until the j letter meaning where 'j' is
+                            break;
+                        }
+                    }
+                    //cout << "After removing garbish after / " << urls[i] << endl;
                     urls[i].append("\n"); // Each url is on a new line
                     strcpy(arr, urls[i].c_str()); // Make the string -> char in order to work with write()
                     testbytes = write(fd,arr,strlen(arr)); // the length part
