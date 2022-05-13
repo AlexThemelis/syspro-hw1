@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#define MAXBUFF 64
+#define MAXBUFF 4096
 #define FIFO1 "/tmp/fifo.1"
 #define FIFO2 "/tmp/fifo.2" //Could go with this implementation
 // vasika o manager
@@ -20,9 +20,37 @@
 
 using namespace std;
 
+int url_extracter(char *buffer,string *url_string){
+    int url_counter=0;
+    string buffer_str = buffer; //To work with regex_search
+
+    regex regexHttp("http://\\S*"); //Explain
+    smatch m;
+
+    // regex_search(buffer_str,m,regexHttp);
+    // for (auto x : m){
+    //     printf("test1\n");
+    //     cout << x << endl;
+    //     //url_string[0] = x;
+    //     url_counter++;
+    // }
+
+    //This works, if you have time try like the above, else understand it with the suffix and explain it
+    
+    while (regex_search(buffer_str, m, regexHttp)) {
+        url_string[url_counter] = m[0]; //check about strcpy etc
+        //cout << "Caught a " << url_string[url_counter] << endl;
+        buffer_str = m.suffix();
+        url_counter++;
+    }
+
+    return url_counter; //Return how many urls
+
+}
+
 int main(){
     int readfd,writefd;
-    char buffer[64];
+    char buffer[MAXBUFF];
     ssize_t nread;
 
     // if ( (writefd = open(FIFO1, O_WRONLY)) < 0){
@@ -56,33 +84,4 @@ int main(){
     
 
     exit(0);
-}
-
-//Returns a array of url's with the correct cut of https on a given buffer
-char ** url_extracter(char *buffer){
-    char ** urls;
-    int url_counter=0;
-    string url_string[10]; //A 64 buffer cant have more than 10 url's (because http:// has 7 characters)  
-    string buffer_str = buffer; //To work with regex_search
-
-    regex regexHttp("http://([^\\s]+)"); //Explain
-    smatch m;
-
-    regex_search(buffer_str,m,regexHttp);
-    for (auto x : m){
-        url_string[url_counter] = x;
-        url_counter++;
-    }
-
-    for(int i=0;i<url_counter;i++){
-        urls[i] = &url_string[0][i]; //We make string into char * in order to be able to easier handle
-    } 
-    // for(int i=0;i<MAXBUFF;i++){
-    //     if(buffer[i] == EOF)
-    //         return urls;
-        
-
-    // }
-
-    return urls;
 }

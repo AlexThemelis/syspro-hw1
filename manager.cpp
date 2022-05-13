@@ -45,6 +45,14 @@ int url_extracter(char *buffer,string *url_string){
 
 }
 
+// void url_counter(char *fileNameOUT){
+//     int fd;
+//     if ((fd = open(fileNameOUT, O_RDONLY))== -1){
+//         perror(" error in opening \n");
+//         exit(1);
+//      }
+// }
+
 int main()
 {
     int p[2];
@@ -65,13 +73,13 @@ int main()
     }
 
 
-    if ( (mkfifo(FIFO1, PERMS) < 0) && (errno != EEXIST) ) {
-        perror("can't create fifo"); 
-    } 
-    if ((mkfifo(FIFO2, PERMS) < 0) && (errno != EEXIST)) {
-        unlink(FIFO1);
-        perror("can't create fifo");
-    }
+    // if ( (mkfifo(FIFO1, PERMS) < 0) && (errno != EEXIST) ) {
+    //     perror("can't create fifo"); 
+    // } 
+    // if ((mkfifo(FIFO2, PERMS) < 0) && (errno != EEXIST)) {
+    //     unlink(FIFO1);
+    //     perror("can't create fifo");
+    // }
 
     // if ( (readfd = open(FIFO1, O_RDONLY)) < 0) {
     //     perror("server: can't open read fifo");
@@ -81,12 +89,7 @@ int main()
     //     perror("server: can't open write fifo");
     // }
 
-        // The file that the urls will be
-        int fd;
-        if ((fd = open("/tmp/urls.out", O_CREAT|O_TRUNC|O_WRONLY|O_APPEND))== -1){ //Make it delete existing file, look diale3eis for that
-            perror(" error in creating\n");
-            exit(1);
-        }
+
 
 
     if ((pid = fork()) < 0)
@@ -108,7 +111,22 @@ int main()
         int rsize;
         char inbuf[MAXBUFF];
         char *filename;
+        int filedes;
+        int fd;
+        string filenameOUT = "/tmp/";
+        char *filenameOUTchar;
         string urls[MAXBUFF/7 + 1]; //http:// has 7 letters so you cant have more than MAXBUFF/7 urls in a MAXBUFF buffer
+
+        char buffer[MAXBUFF];
+        ssize_t nread;
+        int url_counter;
+        int i;
+        int j;
+
+        int testbytes;
+        string tests;
+        char arr[MAXBUFF]; //Highest url, like buffer
+        int strLength;
         while(true){
             rsize = read(p[READ], inbuf, MAXBUFF);
             inbuffer = inbuf;
@@ -118,29 +136,33 @@ int main()
             if(filenametest.empty()){ // If inotifywait gave MOVED_TO and therefore filenametest is empty
                 regex_search(inbuffer,m,regexInotifyMove_to); 
                 for (auto x : m)
-                    filenametest = x;                
+                    filenametest = x;             
             } 
 
-            filename = &filenametest[0]; //We make string into char * in order to be able to easier handle it
 
-            int filedes;
+            //From c_str(), documentation suggests To get a pointer that allows modifying the contents use @c &str[0] instead, put it in README
+            filename = &filenametest[0]; //We make string into char * in order to put it in open()
+
+//////////////////////////////////////Worker Territory///////////////////////////////////////////////////////
+
+            //Making the output as <filename>.out and put it in the /tmp directory
+            filenameOUT.append(filename); 
+            filenameOUT.append(".out");
+
+            filenameOUTchar = &filenameOUT[0]; //We make string into char * in order to put it in open()
+
+            
             if ((filedes = open(filename, O_RDONLY))== -1){
                 perror(" error in opening anotherfile \n");
                 exit(1);
             }
 
-
-            char buffer[MAXBUFF];
-            ssize_t nread;
-            int url_counter;
-            int i;
-            int j;
-
-            int testbytes;
-            string tests;
-            char arr[MAXBUFF]; //Highest url, like buffer
-            int strLength;
-            while((nread = read(filedes,buffer,MAXBUFF)) > 0){
+            // The file that the urls will be
+            if ((fd = open(filenameOUTchar, O_CREAT|O_TRUNC|O_WRONLY|O_APPEND))== -1){ //If present problem with creation, check putting (...|O_APPEND,0777) 
+                perror(" error in creating\n");
+                exit(1);
+            }
+            while((nread = read(filedes,buffer,MAXBUFF)) > 0){ //TODO , FIX HOW TO FLUSH BUFFER ETC
                 url_counter = url_extracter(buffer,urls);
                 //write here in the file the urls
                 for(i=0;i<url_counter;i++){
@@ -168,8 +190,6 @@ int main()
                     testbytes = write(fd,arr,strlen(arr)); // the length part
                 }
             }
-                        
-
         }
     }
 }
