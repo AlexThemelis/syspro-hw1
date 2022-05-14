@@ -8,15 +8,10 @@
 #include <fcntl.h>
 
 #define MAXBUFF 4096
-#define FIFO1 "/tmp/fifo.1"
-#define FIFO2 "/tmp/fifo.2" //Could go with this implementation
-// vasika o manager
-// dimiourgei ena fifo gia kaue worker
-// kai san onoma tou fifo
-// dinei to to pid tou worker
-// opote an 8es na miliseis se ena worker xereis apeu8eis poio fifo exei me ton magaer
-// manager
 #define PERMS 0666
+
+//For know as a temporary solution, else try to do url_counter function
+#define MAXURLS 250
 
 using namespace std;
 
@@ -26,16 +21,6 @@ int url_extracter(char *buffer,string *url_string){
 
     regex regexHttp("http://\\S*"); //Explain
     smatch m;
-
-    // regex_search(buffer_str,m,regexHttp);
-    // for (auto x : m){
-    //     printf("test1\n");
-    //     cout << x << endl;
-    //     //url_string[0] = x;
-    //     url_counter++;
-    // }
-
-    //This works, if you have time try like the above, else understand it with the suffix and explain it
     
     while (regex_search(buffer_str, m, regexHttp)) {
         url_string[url_counter] = m[0]; //check about strcpy etc
@@ -48,40 +33,93 @@ int url_extracter(char *buffer,string *url_string){
 
 }
 
+// void url_counter(char *fileNameOUT){
+//     int fd;
+//     if ((fd = open(fileNameOUT, O_RDONLY))== -1){
+//         perror(" error in opening \n");
+//         exit(1);
+//      }
+// }
+
 int main(){
+    // temporary solution
+    char totalUrls[MAXURLS]; //Double array
+    int totalUrlsCounter = 0;
+
     int readfd,writefd;
     char buffer[MAXBUFF];
     ssize_t nread;
 
-    // if ( (writefd = open(FIFO1, O_WRONLY)) < 0){
-    //     perror("client: can't open write fifo \n");
-    // }
+    string filenameOUT;
+    char *filenameOUTchar;
 
-    // if ( (readfd = open(FIFO2, O_RDONLY)) < 0){
-    //     perror("client: can't open read fifo \n");
-    // }
+    int filedes,fd;
+    int i,j,strLength,url_counter,testbytes;
+
+    string urls[MAXBUFF/7 + 1]; //http:// has 7 letters so you cant have more than MAXBUFF/7 urls in a MAXBUFF buffer
+    char arr[MAXBUFF]; //Highest url, like buffer
 
 
-    // if ( unlink(FIFO1) < 0){
-    //     perror("client: can't unlink \n");
-    // }
+    string pathFifo = "/tmp/";
+    pathFifo.append(to_string(getpid()));
+    char *pathFifoChar = &pathFifo[0];
 
-    // if ( unlink(FIFO2) < 0){
-    //     perror("client: can't unlink \n");
-    // }
-
-    int filedes;
-    if ((filedes = open("url.txt", O_RDONLY))== -1){
-        perror(" error in opening anotherfile \n");
-        exit (1) ;
+    cout << "The path Fifo Char that worker is trying to read is " << pathFifoChar << endl;
+    if ((readfd = open(pathFifoChar, O_RDONLY)) < 0){
+        perror("Worker: can't open read fifo \n");
     }
-    
-    long total = 0;
-    while((nread = read(filedes,buffer,MAXBUFF)) > 0){
-        total+=nread;
-        printf("total char %ld \n",total);
+
+    int rsize;
+    char readbuffer[MAXBUFF];
+    while(true){
+        rsize = read(readfd,readbuffer,MAXBUFF);
+        if ((filedes = open(readbuffer, O_RDONLY))== -1){
+            perror(" error in opening anotherfile \n");
+            exit(1);
+        }
+
+        // The file that the urls will be .out
+        filenameOUT = "/tmp/"; //reinitialization
+        filenameOUT.append(readbuffer); 
+        filenameOUT.append(".out");
+        filenameOUTchar = &filenameOUT[0]; //We make string into char * in order to put it in open()       
+        
+        cout << "the filenameout char is " << filenameOUTchar << endl;
+        if ((fd = open(filenameOUTchar, O_CREAT|O_TRUNC|O_WRONLY|O_APPEND,0777))== -1){ //If present problem with creation, check putting (...|O_APPEND,0777) 
+                perror(" error in creating\n");
+                exit(1);
+        }
+
+        while((nread = read(filedes,buffer,MAXBUFF)) > 0){
+            url_counter = url_extracter(buffer,urls);
+            for(i=0;i<url_counter;i++){
+                urls[i] = urls[i].substr(7,urls[i].length()); // Removing http:// 
+                if(urls[i].length()>3){ //Has at least 4 characters
+                    if(urls[i][0] == 'w' && urls[i][1] == 'w' && urls[i][2] == 'w' && urls[i][3] == '.'){ //Has a www. infront
+                        urls[i] = urls[i].substr(4,urls[i].length()); //Removing "www."
+                    }
+                }
+                strLength = urls[i].length();
+                for(j=0;i<strLength;j++){
+                    if(urls[i][j] == '/'){ //We find if and where is a '/' in the url
+                        urls[i] = urls[i].substr(0,j); //We keep the string from the start until the j letter meaning where 'j' is
+                        break;
+                    }
+                }
+                urls[i].append("\n"); // Each url is on a new line
+                strcpy(arr, urls[i].c_str()); // Make the string -> char in order to work with write()
+                
+                //Testing
+                totalUrls[totalUrlsCounter] = *arr;
+                totalUrlsCounter++;
+                //testbytes = write(fd,arr,strlen(arr)); // the length part
+            }
+            memset(buffer,0,strlen(buffer)); //Flushing the buffer
+        }
+        //edw kanoume raise() (psa3e na deis ti einai) wste o manager na mas pusharei sto queue
+        memset(totalUrls,0,strlen(totalUrls)); //double memset with for
+        //do the urls and lastly write in the end as in mind
     }
-    
 
     exit(0);
 }

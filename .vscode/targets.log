@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Fri May 13 16:35:29 2022
+# Make data base, printed on Sat May 14 20:33:34 2022
 
 # Variables
 
@@ -15,7 +15,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # automatic
 ?F = $(notdir $?)
 # environment
-WSLENV = VSCODE_WSL_EXT_LOCATION/up:VSCODE_SERVER_TAR/up
+WSLENV = VSCODE_WSL_EXT_LOCATION/up
 # default
 .SHELLFLAGS := -c
 # environment
@@ -52,8 +52,6 @@ MAKE_HOST := x86_64-pc-linux-gnu
 PATH = /home/sdi1900062/.vscode-server/bin/da15b6fd3ef856477bf6f4fb29ba1b7af717770d/bin/remote-cli:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/mnt/c/Program Files/AdoptOpenJDK/jdk-8.0.275.1-hotspot/bin:/mnt/c/Program Files/Common Files/Oracle/Java/javapath:/mnt/c/Windows/system32:/mnt/c/Windows:/mnt/c/Windows/System32/Wbem:/mnt/c/Windows/System32/WindowsPowerShell/v1.0/:/mnt/c/Windows/System32/OpenSSH/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Program Files/NVIDIA Corporation/NVIDIA NvDLISR:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/PuTTY/:/mnt/c/Program Files/Intel/WiFi/bin/:/mnt/c/Program Files/Common Files/Intel/WirelessCommon/:/mnt/c/Program Files/Wolfram Research/WolframScript/:/mnt/c/Program Files/MATLAB/R2018b/runtime/win64:/mnt/c/Program Files/MATLAB/R2018b/bin:/mnt/c/Program Files/OpenVPN/bin:/mnt/c/ProgramData/chocolatey/bin:/mnt/c/Program Files/Git/cmd:/mnt/c/Users/astei/AppData/Local/Programs/Python/Python310/Scripts/:/mnt/c/Users/astei/AppData/Local/Programs/Python/Python310/:/mnt/c/Program Files/MySQL/MySQL Shell 8.0/bin/:/mnt/c/Users/astei/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/astei/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/astei/AppData/Roaming/cabal/bin:/mnt/c/tools/msys64:/mnt/c/tools/ghc-9.2.1/bin:/snap/bin
 # environment
 VSCODE_LOG_STACK = false
-# environment
-VSCODE_SERVER_TAR = /mnt/c/Users/astei/AppData/Local/Temp/vscode-remote-wsl/da15b6fd3ef856477bf6f4fb29ba1b7af717770d/vscode-server-stable-linux-x64.tar.gz
 # default
 .FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
 # environment
@@ -65,7 +63,7 @@ VSCODE_PIPE_LOGGING = true
 # environment
 PWD = /mnt/c/Users/astei/Desktop/hw1/syspro-hw1
 # environment
-VSCODE_IPC_HOOK_CLI = /tmp/vscode-ipc-b36c63b2-7fae-41e2-9834-68766fa42d90.sock
+VSCODE_IPC_HOOK_CLI = /tmp/vscode-ipc-fe472eef-915a-42a6-b81f-8f9b035a4068.sock
 # environment
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
@@ -143,7 +141,7 @@ VSCODE_EXTHOST_WILL_SEND_SOCKET = true
 # environment
 WSL_DISTRO_NAME = Ubuntu
 # variable set hash-table stats:
-# Load=66/1024=6%, Rehash=0, Collisions=3/94=3%
+# Load=65/1024=6%, Rehash=0, Collisions=3/93=3%
 
 # Pattern-specific Variable Values
 
@@ -188,6 +186,7 @@ all:
 # Load=8/32=25%, Rehash=0, Collisions=1/11=9%
 #  recipe to execute (from 'Makefile', line 2):
 	g++ -o manager manager.cpp
+	g++ -o worker worker.cpp
 
 # Not a target:
 .SUFFIXES:
@@ -198,7 +197,7 @@ all:
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-05-10 17:33:59.5956373
+#  Last modified 2022-05-14 18:57:55.0421716
 #  File has been updated.
 #  Successfully updated.
 
@@ -231,12 +230,12 @@ clean:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 20 / storage = 175 B / avg = 8 B
-# current buf: size = 8162 B / used = 175 B / count = 20 / avg = 8 B
+# strcache buffers: 1 (0) / strings = 20 / storage = 176 B / avg = 8 B
+# current buf: size = 8162 B / used = 176 B / count = 20 / avg = 8 B
 
 # strcache performance: lookups = 29 / hit rate = 31%
 # hash-table stats:
 # Load=20/8192=0%, Rehash=0, Collisions=1/29=3%
-# Finished Make data base on Fri May 13 16:35:29 2022
+# Finished Make data base on Sat May 14 20:33:34 2022
 
  

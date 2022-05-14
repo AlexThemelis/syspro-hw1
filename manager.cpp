@@ -4,15 +4,16 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
+
+#include <queue>
 
 #define READ 0
 #define WRITE 1
 
 #define MAXBUFF 4096
-#define FIFO1 "/tmp/fifo.1" // We will do get_pid() as a name , the name of the worker
-#define FIFO2 "/tmp/fifo.2"
 #define PERMS 0666
 
 using namespace std;
@@ -45,19 +46,12 @@ int url_extracter(char *buffer,string *url_string){
 
 }
 
-// void url_counter(char *fileNameOUT){
-//     int fd;
-//     if ((fd = open(fileNameOUT, O_RDONLY))== -1){
-//         perror(" error in opening \n");
-//         exit(1);
-//      }
-// }
 
 int main()
 {
     int p[2];
     int readfd,writefd;
-    pid_t pid;
+    pid_t pid,pid2;
 
     regex regexInotifyCreate("CREATE (.+)"); //Explain
     regex regexInotifyMove_to("MOVED_TO (.+)"); //Explain
@@ -71,26 +65,6 @@ int main()
         perror("pipe call");
         exit(-1);
     }
-
-
-    // if ( (mkfifo(FIFO1, PERMS) < 0) && (errno != EEXIST) ) {
-    //     perror("can't create fifo"); 
-    // } 
-    // if ((mkfifo(FIFO2, PERMS) < 0) && (errno != EEXIST)) {
-    //     unlink(FIFO1);
-    //     perror("can't create fifo");
-    // }
-
-    // if ( (readfd = open(FIFO1, O_RDONLY)) < 0) {
-    //     perror("server: can't open read fifo");
-    // }
-
-    // if ( (writefd = open(FIFO2, O_WRONLY)) < 0) {
-    //     perror("server: can't open write fifo");
-    // }
-
-
-
 
     if ((pid = fork()) < 0)
     {
@@ -127,6 +101,15 @@ int main()
         string tests;
         char arr[MAXBUFF]; //Highest url, like buffer
         int strLength;
+
+        queue<pid_t> workers_available; //PID of the worker that is available
+        pid_t curr_Worker;
+        string pathFifo;
+        char *pathFifoChar;
+
+        int status;
+        char *arg[1]; //In order execvp not have compiler warnings (because I don't have arguments)
+        arg[0] = NULL; 
         while(true){
             rsize = read(p[READ], inbuf, MAXBUFF);
             inbuffer = inbuf;
@@ -141,53 +124,49 @@ int main()
 
 
             //From c_str(), documentation suggests To get a pointer that allows modifying the contents use @c &str[0] instead, put it in README
-            filename = &filenametest[0]; //We make string into char * in order to put it in open()
+            filename = &filenametest[0]; //We make string into char * in order the worker to put it in open()
 
-//////////////////////////////////////Worker Territory///////////////////////////////////////////////////////
+            if(workers_available.empty()){
 
-            //Making the output as <filename>.out and put it in the /tmp directory
-            filenameOUT.append(filename); 
-            filenameOUT.append(".out");
+                if ((pid2 = fork()) < 0)
+                {
+                    perror("Failed to create proccess");
+                    exit(-4);
+                }
 
-            filenameOUTchar = &filenameOUT[0]; //We make string into char * in order to put it in open()
-
-            
-            if ((filedes = open(filename, O_RDONLY))== -1){
-                perror(" error in opening anotherfile \n");
-                exit(1);
-            }
-
-            // The file that the urls will be
-            if ((fd = open(filenameOUTchar, O_CREAT|O_TRUNC|O_WRONLY|O_APPEND))== -1){ //If present problem with creation, check putting (...|O_APPEND,0777) 
-                perror(" error in creating\n");
-                exit(1);
-            }
-            while((nread = read(filedes,buffer,MAXBUFF)) > 0){ //TODO , FIX HOW TO FLUSH BUFFER ETC
-                url_counter = url_extracter(buffer,urls);
-                //write here in the file the urls
-                for(i=0;i<url_counter;i++){
-                    //cout << "Before removing http:// " << urls[i] << endl;
-                    urls[i] = urls[i].substr(7,urls[i].length()); // Removing http:// 
-                    //cout << "after removing http:// " << urls[i] << endl;
-                    //cout << "Before removing www. " << urls[i] << endl;
-                    if(urls[i].length()>3){ //Has at least 4 characters
-                        if(urls[i][0] == 'w' && urls[i][1] == 'w' && urls[i][2] == 'w' && urls[i][3] == '.'){ //Has a www. infront
-                            urls[i] = urls[i].substr(4,urls[i].length()); //Removing "www."
-                        }
+                if (pid2 == 0){ // Worker //
+                    //sleep(1) so the fifo for sure will be created, maybe a semaphore would be better but sleep(1) does the job
+                    sleep(1);
+                    execl("worker","worker",NULL);
+                }else{
+                    pathFifo = "/tmp/"; //Reinitializing 
+                    pathFifo.append(to_string(pid2)); //pid2 has the pid of the child
+                    pathFifoChar = &pathFifo[0];
+                    if ((mkfifo(pathFifoChar, PERMS) < 0) && (errno != EEXIST)){ 
+                        perror("can't create fifo"); 
                     }
-                    //cout << "After removing http:// " << urls[i] << endl;
-                    //cout << "Before removing garbish after / " << urls[i] << endl;
-                    strLength = urls[i].length();
-                    for(j=0;i<strLength;j++){
-                        if(urls[i][j] == '/'){ //We find if and where is a '/' in the url
-                            urls[i] = urls[i].substr(0,j); //We keep the string from the start until the j letter meaning where 'j' is
-                            break;
-                        }
+                    if ((writefd = open(pathFifoChar, O_WRONLY)) < 0){
+                        perror("Manager: can't open write fifo \n");
                     }
-                    //cout << "After removing garbish after / " << urls[i] << endl;
-                    urls[i].append("\n"); // Each url is on a new line
-                    strcpy(arr, urls[i].c_str()); // Make the string -> char in order to work with write()
-                    testbytes = write(fd,arr,strlen(arr)); // the length part
+                    if(write(writefd,filename,strlen(filename)) != strlen(filename)){
+                        perror("Filename not passed correctly from manager to worker\n");
+                    }
+
+                    //waitpid(pid2,&status,WNOHANG|WUNTRACED);
+                    //workers_available.push(pid2); pid2 is childs pid -> workers pid (stays the same with execvp)
+                }
+            }else{
+                curr_Worker =  workers_available.front();
+                workers_available.pop();
+                pathFifo = "/tmp/"; //Reinitializing 
+                pathFifo.append(to_string(curr_Worker));
+                pathFifoChar = &pathFifo[0];
+                if ((writefd = open(pathFifoChar, O_WRONLY)) < 0){
+                    perror("Manager: can't open write fifo \n");
+                }
+                //Kanoyme write sto WRITE END tou named pipe me onoma curr_Worker (to PID tou dia8esimou worker) to filename
+                if(write(writefd,filename,strlen(filename)) != strlen(filename)){
+                    perror("Filename not passed correctly from manager to worker\n");
                 }
             }
         }
