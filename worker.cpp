@@ -2,6 +2,7 @@
 #include <regex>
 
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -43,8 +44,12 @@ int url_extracter(char *buffer,string *url_string){
 
 int main(){
     // temporary solution
-    char totalUrls[MAXURLS]; //Double array
+    string totalUrls[MAXURLS]; //Double array
     int totalUrlsCounter = 0;
+    int totalUrlsNumber[MAXURLS]; //Parallel array with totalUrls, how many times this url is
+    for(int w=0;w<MAXURLS;w++){totalUrlsNumber[w] = 1;} //Initializing with 1 (every url exists at least 1 time)
+    bool existingUrl = false;
+    ///////
 
     int readfd,writefd;
     char buffer[MAXBUFF];
@@ -54,7 +59,7 @@ int main(){
     char *filenameOUTchar;
 
     int filedes,fd;
-    int i,j,strLength,url_counter,testbytes;
+    int i,j,z,strLength,url_counter,testbytes;
 
     string urls[MAXBUFF/7 + 1]; //http:// has 7 letters so you cant have more than MAXBUFF/7 urls in a MAXBUFF buffer
     char arr[MAXBUFF]; //Highest url, like buffer
@@ -100,25 +105,46 @@ int main(){
                     }
                 }
                 strLength = urls[i].length();
-                for(j=0;i<strLength;j++){
+                for(j=0;j<strLength;j++){
                     if(urls[i][j] == '/'){ //We find if and where is a '/' in the url
                         urls[i] = urls[i].substr(0,j); //We keep the string from the start until the j letter meaning where 'j' is
                         break;
                     }
                 }
-                urls[i].append("\n"); // Each url is on a new line
-                strcpy(arr, urls[i].c_str()); // Make the string -> char in order to work with write()
-                
+                /*Here for OLD METHOD
+                //urls[i].append("\n"); // Each url is on a new line
+                //strcpy(arr, urls[i].c_str()); // Make the string -> char in order to work with write()
+                */
+
                 //Testing
-                totalUrls[totalUrlsCounter] = *arr;
-                totalUrlsCounter++;
+                existingUrl = false;
+                for(z=0;z<totalUrlsCounter;z++){
+                    if(totalUrls[z] == urls[i]){
+                        totalUrlsNumber[z]++;
+                        existingUrl = true;
+                    }
+                }
+                if(!existingUrl){
+                    totalUrls[totalUrlsCounter] = urls[i];
+                    totalUrlsCounter++;
+                }
                 //testbytes = write(fd,arr,strlen(arr)); // the length part
             }
             memset(buffer,0,strlen(buffer)); //Flushing the buffer
         }
-        //edw kanoume raise() (psa3e na deis ti einai) wste o manager na mas pusharei sto queue
-        memset(totalUrls,0,strlen(totalUrls)); //double memset with for
-        //do the urls and lastly write in the end as in mind
+        for(int w=0;w<totalUrlsCounter;w++){
+            totalUrls[w].append(" "); totalUrls[w].append(to_string(totalUrlsNumber[w])); totalUrls[w].append("\n");
+            strcpy(arr, totalUrls[w].c_str());
+            testbytes = write(fd,arr,strlen(arr));
+        }
+
+        //Reinitializing the counter so no need to reinitializing totalUrls 
+        totalUrlsCounter = 0; //(we leave garbage data as we are protected for accessing only data that this counter tells us)  
+        for(int w=0;w<MAXURLS;w++){totalUrlsNumber[w] = 1;} //Reinitializing totalUrlsNumber
+
+        cout << "Worker will now raise(SIGSTOP)" << endl;
+        raise(SIGSTOP);
+        cout << "Worker just resumed" << endl;
     }
 
     exit(0);

@@ -47,8 +47,24 @@ int url_extracter(char *buffer,string *url_string){
 }
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    char *InotifyPath = (char *) "."; // Casting (char *) is because of compiler warning  
+    switch(argc){
+        case 1:
+            break;
+        case 3:
+            if(argv[1] != "-p"){
+                cout << "Wrong Input!" << endl;
+                return -1;
+            }
+            InotifyPath = argv[1];
+            break;
+        default:
+            cout << "Wrong Input!" << endl;
+            return -1;
+    }
+
     int p[2];
     int readfd,writefd;
     pid_t pid,pid2;
@@ -78,7 +94,7 @@ int main()
         int retval = 0;
         //Explain in readme what are the parameters doing, why we did only create and moved_to
         //From the man page, only these 2 events (create and moved_to) is what we care at our exercise
-        retval = execl("/usr/bin/X11/inotifywait", "inotifywait", ".", "-m", "-e", "create", "-e", "moved_to", NULL);
+        retval = execl("/usr/bin/X11/inotifywait", "inotifywait", InotifyPath, "-m", "-e", "create", "-e", "moved_to", NULL);
     }
     else{ // Manager //
         close(p[WRITE]);
@@ -107,9 +123,7 @@ int main()
         string pathFifo;
         char *pathFifoChar;
 
-        int status;
-        char *arg[1]; //In order execvp not have compiler warnings (because I don't have arguments)
-        arg[0] = NULL; 
+        int status; 
         while(true){
             rsize = read(p[READ], inbuf, MAXBUFF);
             inbuffer = inbuf;
@@ -135,16 +149,17 @@ int main()
                 }
 
                 if (pid2 == 0){ // Worker //
-                    //sleep(1) so the fifo for sure will be created, maybe a semaphore would be better but sleep(1) does the job
-                    sleep(1);
+                    pathFifo = "/tmp/"; //Reinitializing 
+                    pathFifo.append(to_string(getpid())); //pid of the worker (execl keeps pid the same)
+                    pathFifoChar = &pathFifo[0];
+                    if ((mkfifo(pathFifoChar, PERMS) < 0) && (errno != EEXIST)){ 
+                        perror("can't create fifo"); 
+                    }
                     execl("worker","worker",NULL);
                 }else{
                     pathFifo = "/tmp/"; //Reinitializing 
                     pathFifo.append(to_string(pid2)); //pid2 has the pid of the child
                     pathFifoChar = &pathFifo[0];
-                    if ((mkfifo(pathFifoChar, PERMS) < 0) && (errno != EEXIST)){ 
-                        perror("can't create fifo"); 
-                    }
                     if ((writefd = open(pathFifoChar, O_WRONLY)) < 0){
                         perror("Manager: can't open write fifo \n");
                     }
@@ -152,12 +167,15 @@ int main()
                         perror("Filename not passed correctly from manager to worker\n");
                     }
 
-                    //waitpid(pid2,&status,WNOHANG|WUNTRACED);
-                    //workers_available.push(pid2); pid2 is childs pid -> workers pid (stays the same with execvp)
+                    while((waitpid(pid2,&status,WNOHANG|WUNTRACED)) == 0); // If not working check instead of -1, do pid2
+                    cout << "Manager exited from waitpid and I'm pushing worker as available" << endl;
+                    workers_available.push(pid2); //pid2 is childs pid -> workers pid (stays the same with execvp)
                 }
             }else{
+                cout << "Workers available were NOT empty and so i got into the else" << endl;
                 curr_Worker =  workers_available.front();
                 workers_available.pop();
+                kill(curr_Worker,SIGCONT); //Telling the worker to continue
                 pathFifo = "/tmp/"; //Reinitializing 
                 pathFifo.append(to_string(curr_Worker));
                 pathFifoChar = &pathFifo[0];

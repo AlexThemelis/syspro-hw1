@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Sat May 14 20:33:34 2022
+# Make data base, printed on Sun May 15 21:46:22 2022
 
 # Variables
 
@@ -63,7 +63,7 @@ VSCODE_PIPE_LOGGING = true
 # environment
 PWD = /mnt/c/Users/astei/Desktop/hw1/syspro-hw1
 # environment
-VSCODE_IPC_HOOK_CLI = /tmp/vscode-ipc-fe472eef-915a-42a6-b81f-8f9b035a4068.sock
+VSCODE_IPC_HOOK_CLI = /tmp/vscode-ipc-f880019a-b808-4406-b500-6099f49afafa.sock
 # environment
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
@@ -185,7 +185,7 @@ all:
 # variable set hash-table stats:
 # Load=8/32=25%, Rehash=0, Collisions=1/11=9%
 #  recipe to execute (from 'Makefile', line 2):
-	g++ -o manager manager.cpp
+	g++ -o sniffer manager.cpp
 	g++ -o worker worker.cpp
 
 # Not a target:
@@ -197,7 +197,7 @@ all:
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-05-14 18:57:55.0421716
+#  Last modified 2022-05-15 21:46:19.0553666
 #  File has been updated.
 #  Successfully updated.
 
@@ -207,35 +207,28 @@ Makefile:
 #  Modification time never checked.
 #  File has not been updated.
 
-run:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
-#  recipe to execute (from 'Makefile', line 6):
-	./manager
-
 clean:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  recipe to execute (from 'Makefile', line 9):
-	rm -f manager
+#  recipe to execute (from 'Makefile', line 6):
+	rm -f sniffer
 	rm -f worker
 
 # files hash-table stats:
-# Load=6/1024=1%, Rehash=0, Collisions=0/18=0%
+# Load=5/1024=0%, Rehash=0, Collisions=0/17=0%
 # VPATH Search Paths
 
 # No 'vpath' search paths.
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 20 / storage = 176 B / avg = 8 B
-# current buf: size = 8162 B / used = 176 B / count = 20 / avg = 8 B
+# strcache buffers: 1 (0) / strings = 19 / storage = 174 B / avg = 9 B
+# current buf: size = 8162 B / used = 174 B / count = 19 / avg = 9 B
 
-# strcache performance: lookups = 29 / hit rate = 31%
+# strcache performance: lookups = 27 / hit rate = 29%
 # hash-table stats:
-# Load=20/8192=0%, Rehash=0, Collisions=1/29=3%
-# Finished Make data base on Sat May 14 20:33:34 2022
+# Load=19/8192=0%, Rehash=0, Collisions=1/27=4%
+# Finished Make data base on Sun May 15 21:46:22 2022
 
  
