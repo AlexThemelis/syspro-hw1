@@ -1,7 +1,10 @@
+#include "signal_handlers.h"
+
 #include <iostream>
 #include <regex>
 
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -13,67 +16,50 @@
 #define READ 0
 #define WRITE 1
 
-#define MAXBUFF 4096
+#define MAXBUFF 8192
 #define PERMS 0666
+
+#define OUTPUTPATH "/tmp/"
 
 using namespace std;
 
-int url_extracter(char *buffer,string *url_string){
-    int url_counter=0;
-    string buffer_str = buffer; //To work with regex_search
-
-    regex regexHttp("http://\\S*"); //Explain
-    smatch m;
-
-    // regex_search(buffer_str,m,regexHttp);
-    // for (auto x : m){
-    //     printf("test1\n");
-    //     cout << x << endl;
-    //     //url_string[0] = x;
-    //     url_counter++;
-    // }
-
-    //This works, if you have time try like the above, else understand it with the suffix and explain it
-    
-    while (regex_search(buffer_str, m, regexHttp)) {
-        url_string[url_counter] = m[0]; //check about strcpy etc
-        //cout << "Caught a " << url_string[url_counter] << endl;
-        buffer_str = m.suffix();
-        url_counter++;
-    }
-
-    return url_counter; //Return how many urls
-
-}
+//Globals
+queue<pid_t *> workers_available; // PID of the worker that is available
+pid_t listener_pid;
+char *InotifyPath = (char *) ".";
+//
 
 
 int main(int argc, char *argv[])
 {
-    char *InotifyPath = (char *) "."; // Casting (char *) is because of compiler warning  
+    char *InotifyPath = (char *) ".";
     switch(argc){
         case 1:
             break;
         case 3:
-            if(argv[1] != "-p"){
+            if(strcmp(argv[1],"-p")){
                 cout << "Wrong Input!" << endl;
                 return -1;
             }
-            InotifyPath = argv[1];
+            InotifyPath = argv[2];
             break;
         default:
             cout << "Wrong Input!" << endl;
             return -1;
     }
 
+    signal(SIGCHLD,sigchld_signal_handler); // Instead of ignoring SIGCHLD, handling it with signal_handler
+    signal(SIGINT,sigint_signal_handler); // Proper SIGINT for ctrl-c, killing listeners and workers
+
     int p[2];
     int readfd,writefd;
     pid_t pid,pid2;
 
-    regex regexInotifyCreate("CREATE (.+)"); //Explain
-    regex regexInotifyMove_to("MOVED_TO (.+)"); //Explain
+    regex regexInotifyCreate("CREATE (.+)"); // Match all the characters after CREATE and a space
+    regex regexInotifyMove_to("MOVED_TO (.+)"); // Match all the characters after MOVED_TO and a space
     smatch m;
 
-    string filenametest;
+    string filenameregex;
     string inbuffer;
 
     if (pipe(p) == -1)
@@ -90,36 +76,20 @@ int main(int argc, char *argv[])
 
     if (pid == 0){ // Listener //
         close(p[READ]);
-        dup2(p[WRITE], 1);
+        dup2(p[WRITE], 1); // Redirecting standard output to the write end of the PIPE
         int retval = 0;
-        //Explain in readme what are the parameters doing, why we did only create and moved_to
         //From the man page, only these 2 events (create and moved_to) is what we care at our exercise
         retval = execl("/usr/bin/X11/inotifywait", "inotifywait", InotifyPath, "-m", "-e", "create", "-e", "moved_to", NULL);
     }
     else{ // Manager //
+        listener_pid = pid;
+
         close(p[WRITE]);
         int rsize;
         char inbuf[MAXBUFF];
         char *filename;
-        int filedes;
-        int fd;
-        string filenameOUT = "/tmp/";
-        char *filenameOUTchar;
-        string urls[MAXBUFF/7 + 1]; //http:// has 7 letters so you cant have more than MAXBUFF/7 urls in a MAXBUFF buffer
 
-        char buffer[MAXBUFF];
-        ssize_t nread;
-        int url_counter;
-        int i;
-        int j;
-
-        int testbytes;
-        string tests;
-        char arr[MAXBUFF]; //Highest url, like buffer
-        int strLength;
-
-        queue<pid_t> workers_available; //PID of the worker that is available
-        pid_t curr_Worker;
+        pid_t *curr_Worker;
         string pathFifo;
         char *pathFifoChar;
 
@@ -129,16 +99,16 @@ int main(int argc, char *argv[])
             inbuffer = inbuf;
             regex_search(inbuffer,m,regexInotifyCreate); //If inotifywait gave CREATE ...
             for (auto x : m)
-                filenametest = x;
-            if(filenametest.empty()){ // If inotifywait gave MOVED_TO and therefore filenametest is empty
+                filenameregex = x;
+            if(filenameregex.empty()){ // If inotifywait gave MOVED_TO and therefore filenametest is empty
                 regex_search(inbuffer,m,regexInotifyMove_to); 
                 for (auto x : m)
-                    filenametest = x;             
+                    filenameregex = x;             
             } 
 
 
-            //From c_str(), documentation suggests To get a pointer that allows modifying the contents use @c &str[0] instead, put it in README
-            filename = &filenametest[0]; //We make string into char * in order the worker to put it in open()
+            //From c_str(), documentation suggests: To get a pointer that allows modifying the contents use @c &str[0] instead
+            filename = &filenameregex[0]; //We make string into char * in order the worker to put it in open()
 
             if(workers_available.empty()){
 
@@ -149,7 +119,7 @@ int main(int argc, char *argv[])
                 }
 
                 if (pid2 == 0){ // Worker //
-                    pathFifo = "/tmp/"; //Reinitializing 
+                    pathFifo = OUTPUTPATH; //Reinitializing 
                     pathFifo.append(to_string(getpid())); //pid of the worker (execl keeps pid the same)
                     pathFifoChar = &pathFifo[0];
                     if ((mkfifo(pathFifoChar, PERMS) < 0) && (errno != EEXIST)){ 
@@ -157,35 +127,40 @@ int main(int argc, char *argv[])
                     }
                     execl("worker","worker",NULL);
                 }else{
-                    pathFifo = "/tmp/"; //Reinitializing 
+                    pathFifo = OUTPUTPATH; //Reinitializing 
                     pathFifo.append(to_string(pid2)); //pid2 has the pid of the child
                     pathFifoChar = &pathFifo[0];
+                    sleep(1); //Inorder to have time to create the pipe, could use a semaphore but sleep(1) does the job
                     if ((writefd = open(pathFifoChar, O_WRONLY)) < 0){
                         perror("Manager: can't open write fifo \n");
+                    }
+                    if(strcmp(InotifyPath,".")){ // If InotifyPath is not "." but we have path 
+                        char *tempPath = InotifyPath;
+                        strcat(tempPath,filename);
+                        filename = tempPath;
                     }
                     if(write(writefd,filename,strlen(filename)) != strlen(filename)){
                         perror("Filename not passed correctly from manager to worker\n");
                     }
-
-                    while((waitpid(pid2,&status,WNOHANG|WUNTRACED)) == 0); // If not working check instead of -1, do pid2
-                    cout << "Manager exited from waitpid and I'm pushing worker as available" << endl;
-                    workers_available.push(pid2); //pid2 is childs pid -> workers pid (stays the same with execvp)
                 }
             }else{
-                cout << "Workers available were NOT empty and so i got into the else" << endl;
                 curr_Worker =  workers_available.front();
                 workers_available.pop();
-                kill(curr_Worker,SIGCONT); //Telling the worker to continue
-                pathFifo = "/tmp/"; //Reinitializing 
-                pathFifo.append(to_string(curr_Worker));
+                signal(SIGCHLD,null_handler); // Making SIGCHLD be ignored and thus kill(curr_Worker,SIGCONT) won't trigger it
+                kill(*curr_Worker,SIGCONT); // Telling the worker to continue
+                signal(SIGCHLD,sigchld_signal_handler); // Making SIGCHLD again to be handled
+                pathFifo = OUTPUTPATH; // Reinitializing 
+                pathFifo.append(to_string(*curr_Worker)); // Getting the path of available worker's fifo
+                free(curr_Worker); // Freeing curr_Worker that we had malloced
                 pathFifoChar = &pathFifo[0];
                 if ((writefd = open(pathFifoChar, O_WRONLY)) < 0){
                     perror("Manager: can't open write fifo \n");
                 }
-                //Kanoyme write sto WRITE END tou named pipe me onoma curr_Worker (to PID tou dia8esimou worker) to filename
+                // Write in the named pipe with the name curr_worker (PID of available worker the filename)
                 if(write(writefd,filename,strlen(filename)) != strlen(filename)){
                     perror("Filename not passed correctly from manager to worker\n");
                 }
+                close(writefd);
             }
         }
     }

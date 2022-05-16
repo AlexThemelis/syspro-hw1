@@ -27,5 +27,5 @@ do
             fi
         fi
     done
-    echo $TLD is the TLD of $counter urls    
+    echo $TLD is the TLD of $counter urls
 done

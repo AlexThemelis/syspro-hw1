@@ -1,5 +1,5 @@
 all:
-	g++ -o sniffer manager.cpp
+	g++ -o sniffer sniffer.cpp signal_handlers.cpp
 	g++ -o worker worker.cpp
 
 clean:

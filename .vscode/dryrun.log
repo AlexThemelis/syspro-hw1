@@ -1,6 +1,6 @@
-make --dry-run --keep-going --print-directory
+make --dry-run --always-make --keep-going --print-directory
 make: Entering directory '/mnt/c/Users/astei/Desktop/hw1/syspro-hw1'
-g++ -o sniffer manager.cpp
+g++ -o sniffer sniffer.cpp signal_handlers.cpp
 g++ -o worker worker.cpp
 make: Leaving directory '/mnt/c/Users/astei/Desktop/hw1/syspro-hw1'
  
